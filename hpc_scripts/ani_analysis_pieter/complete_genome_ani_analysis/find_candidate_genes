@@ -1,0 +1,64 @@
+#!/bin/bash
+#
+# Given a file containing Groups of Orthologous Clusters (COGs), the script finds those groups that
+# contain a unique representative for each genome included.
+#
+# syntaxis: find_candidate_genes <groups_file>
+
+# process input arguments
+groups_file=$1
+
+awk '
+{
+  if ($1!="") {
+    COG_name[++COGs]=$1
+    for(i=2;i<=NF;++i) {
+      pos=index($i,"|")
+      if (pos>0) {
+        genome=substr($i,1,pos-1)
+        gene=substr($i,pos+1)
+        if(length(gene)<length(genome)) { tmp=gene; gene=genome; genome=tmp }
+        if (!(genome in genome_index)) {
+          genome_name[++genomes]=genome
+          genome_index[genome]=genomes
+        }
+        if (!((COGs SUBSEP genome_index[genome]) in COG_genome))
+          COG_genome[COGs,genome_index[genome]]=gene
+        else
+          COG_genome[COGs,genome_index[genome]]=COG_genome[COGs,genome_index[genome]] "," gene
+      }
+    }
+  }
+}
+END {
+  # sort genomes according to name
+  for(i=1; i<=genomes; ++i) 
+    if (genome_name[i]!="CM01xxx" && genome_name[i]!="BU21") # delete genome MSHR346 (=BU21) because it has only one sequenced genome
+      genome_name_sorted[++inew] = genome_name[i]
+  genomes=inew
+  for(i=2; i<=genomes; ++i) {
+    for(j=i; (j-1) in genome_name_sorted && genome_name_sorted[j-1] > genome_name_sorted[j]; --j) {
+      tmp=genome_name_sorted[j]; genome_name_sorted[j]=genome_name_sorted[j-1]; genome_name_sorted[j-1]=tmp
+    }
+  }
+  # find candidate COGs (gene should occur exactly one time in each genome)
+  #for(i=1; i<=genomes; ++i) printf("genome %d: %s\n",i,genome_name_sorted[i])
+  for(i=1; i<=COGs; ++i) {
+    candidates=0
+    for(j=1; j<=genomes; ++j) {
+      jnew=genome_index[genome_name_sorted[j]]
+      if(((i SUBSEP jnew) in COG_genome) && index(COG_genome[i,jnew],",")==0) ++candidates
+      #else break
+    }
+    #printf("COG %s %d candidates\n",COG_name[i],candidates)
+    if (candidates==genomes) {
+      printf("%s",COG_name[i])
+      for(j=1; j<=genomes; ++j) {
+        jnew=genome_index[genome_name_sorted[j]]
+        if ((i SUBSEP jnew) in COG_genome) printf(" %s:%s",genome_name[jnew],COG_genome[i,jnew])
+      }
+      printf("\n")
+    }
+  } 
+}
+' ${groups_file}
