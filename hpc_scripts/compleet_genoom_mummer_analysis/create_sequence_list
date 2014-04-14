@@ -1,9 +1,0 @@
-#!/bin/bash
-#
-# create_sequence_list <bacteria directory>  <regex>
-
-#org
-#echo ~/genomes/bacteria/$1 | sed -e 's/ /\
-#/g' | sort | sed 's/^\(.*\)\/\([^/]*\)/\2 \1\/\2/'
-echo $1/$2 | sed -e 's/ /\
-/g' | sort | sed 's/^\(.*\)\/\([^/]*\)/\2 \1\/\2/'
